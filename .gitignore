@@ -1,0 +1,17 @@
+# Environment variables containing sensitive secrets
+.env
+
+# SQLite Database & Logs
+bot_data.db
+bot.log
+
+# Python cache & bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating system files
+Thumbs.db
+Desktop.ini
+.DS_Store
