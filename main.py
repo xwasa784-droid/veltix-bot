@@ -96,12 +96,6 @@ def create_bot(use_privileged_intents: bool = True):
     return bot
 
 async def start_bot_instance(use_privileged_intents: bool):
-    # Start embedded health check server for Render free web service
-    try:
-        await start_web_server()
-    except Exception as e:
-        logger.warning(f"Could not start web server: {e}")
-
     bot = create_bot(use_privileged_intents)
     
     initial_extensions = [
@@ -127,6 +121,12 @@ async def main():
         logger.warning(f"Missing environment variables: {', '.join(missing)}")
         logger.warning("Please edit the .env file with your DISCORD_TOKEN before starting the bot.")
         return
+
+    # Start background web server for Render health check detection
+    try:
+        asyncio.create_task(start_web_server())
+    except Exception as e:
+        logger.warning(f"Could not start web server: {e}")
 
     try:
         await start_bot_instance(use_privileged_intents=True)
