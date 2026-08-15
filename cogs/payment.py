@@ -172,6 +172,7 @@ class PaymentPanelView(discord.ui.View):
 class PaymentCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.processed_channels = set()
 
     async def cog_load(self):
         # Register persistent view on cog load
@@ -180,26 +181,14 @@ class PaymentCog(commands.Cog):
     def build_payment_embed(self, guild: discord.Guild):
         ltc_address = db.get_setting("LTC_ADDRESS", Config.LTC_ADDRESS)
         ltc_amount = float(db.get_setting("LTC_AMOUNT", str(Config.LTC_AMOUNT)))
-        duration_hours = float(db.get_setting("ACCESS_DURATION_HOURS", str(Config.ACCESS_DURATION_HOURS)))
 
         embed = discord.Embed(
             title="ACCESS 1 DAY ☀️ - VIP Purchase",
-            description=(
-                "**Get access to more than 300 numbers per day**\n\n"
-                "💵 **Price** : 15€ for 24 hours\n"
-                "⚡ **Time to get the role** : Instantly\n"
-                "👥 **Max People** : 10 people simultaneous to get the role max\n\n"
-                "Follow the payment instructions below to receive your role instantly:"
-            ),
             color=discord.Color.from_rgb(255, 180, 0)
         )
-        image_url = db.get_setting("EMBED_IMAGE_URL", "")
-        if image_url:
-            embed.set_image(url=image_url)
 
         embed.add_field(name="💳 Litecoin (LTC) Address", value=f"```\n{ltc_address}\n```", inline=False)
         embed.add_field(name="💰 Required Payment Amount", value=f"**`{ltc_amount} LTC`**", inline=True)
-        embed.add_field(name="⏱️ Access Duration", value=f"**`{int(duration_hours)} Hours`**", inline=True)
         embed.add_field(
             name="📋 Instructions",
             value=(
@@ -219,6 +208,9 @@ class PaymentCog(commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return
 
+        if channel.id in self.processed_channels:
+            return
+
         category_id = int(db.get_setting("TICKET_CATEGORY_ID", str(Config.TICKET_CATEGORY_ID)))
         channel_name_lower = channel.name.lower()
         
@@ -227,6 +219,7 @@ class PaymentCog(commands.Cog):
         is_ticket_name = any(channel_name_lower.startswith(prefix) for prefix in ["ticket", "support", "buy", "claim"])
 
         if is_ticket_category or is_ticket_name:
+            self.processed_channels.add(channel.id)
             logger.info(f"Detected new ticket channel: #{channel.name} ({channel.id}). Sending payment embed...")
             # Wait 1.5 seconds for external ticket bot to finish channel creation setup
             await asyncio.sleep(1.5)
