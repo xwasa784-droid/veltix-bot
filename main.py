@@ -30,7 +30,7 @@ async def handle_health_check(request):
     return web.Response(text="Bot is running smoothly!", status=200)
 
 async def start_web_server():
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 10000))
     app = web.Application()
     app.router.add_get("/", handle_health_check)
     app.router.add_get("/health", handle_health_check)
