@@ -5,7 +5,6 @@ import datetime
 import logging
 from config import Config
 from database import db
-from cogs.tickets import TicketDropdownView
 
 logger = logging.getLogger(__name__)
 
@@ -28,26 +27,6 @@ class AdminCog(commands.Cog):
         return False
 
     # --- SHARED HELPER IMPLEMENTATIONS ---
-    def _create_setup_tickets_embed(self):
-        embed = discord.Embed(
-            title="ACCESS 1 DAY ☀️",
-            description=(
-                "Get access to more than 300 numbers per day\n\n"
-                "💵 **Price** : 15€ for 24 hours\n"
-                "⚡ **Time to get the role** : Instantly\n"
-                "👥 **Max People** : 10 people simultaneous to get the role max\n\n"
-                "Click on the option below to start the purchase procedure."
-            ),
-            color=discord.Color.from_rgb(255, 180, 0)
-        )
-        image_url = db.get_setting("EMBED_IMAGE_URL", "")
-        if image_url:
-            embed.set_image(url=image_url)
-        elif self.bot.user and self.bot.user.display_avatar:
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-        embed.set_footer(text="Automated Access & Payment System")
-        return embed
-
     async def _grant_access_logic(self, guild: discord.Guild, author_name: str, member: discord.Member, hours: float):
         role_id = int(db.get_setting("ACCESS_ROLE_ID", str(Config.ACCESS_ROLE_ID)))
         role = guild.get_role(role_id) if role_id else None
@@ -117,7 +96,7 @@ class AdminCog(commands.Cog):
         log_channel_id = db.get_setting("LOG_CHANNEL_ID", str(Config.LOG_CHANNEL_ID))
 
         role_mention = f"<@&{role_id}>" if role_id != "0" else "`Not Set`"
-        category_str = f"<#{category_id}>" if category_id != "0" else "`None`"
+        category_str = f"<#{category_id}>" if category_id != "0" else "`None (Auto-detect ticket-* channels)`"
         staff_str = f"<@&{staff_role_id}>" if staff_role_id != "0" else "`None`"
         log_str = f"<#{log_channel_id}>" if log_channel_id != "0" else "`None`"
 
@@ -129,7 +108,7 @@ class AdminCog(commands.Cog):
         embed.add_field(name="💰 Required LTC", value=f"`{ltc_amount} LTC`", inline=True)
         embed.add_field(name="⏱️ Role Duration", value=f"`{duration} Hours`", inline=True)
         embed.add_field(name="👑 Target Role", value=role_mention, inline=True)
-        embed.add_field(name="📁 Ticket Category", value=category_str, inline=True)
+        embed.add_field(name="📁 Ticket Category ID", value=category_str, inline=True)
         embed.add_field(name="🛡️ Staff Role", value=staff_str, inline=True)
         embed.add_field(name="📋 Log Channel", value=log_str, inline=True)
         return embed
@@ -137,22 +116,6 @@ class AdminCog(commands.Cog):
     # ==========================================
     # ⚡ DISCORD SLASH COMMANDS (app_commands)
     # ==========================================
-
-    @app_commands.command(name="setup_tickets", description="Deploy the ticket launcher embed with dropdown menu")
-    async def slash_setup_tickets(self, interaction: discord.Interaction):
-        if not self.is_admin_or_staff(interaction.user):
-            if not interaction.response.is_done():
-                await interaction.response.send_message("❌ You do not have permission to run this command.", ephemeral=True)
-            return
-        embed = self._create_setup_tickets_embed()
-        view = TicketDropdownView()
-        try:
-            if not interaction.response.is_done():
-                await interaction.response.send_message(embed=embed, view=view)
-            else:
-                await interaction.followup.send(embed=embed, view=view)
-        except Exception as e:
-            logger.error(f"Error in slash_setup_tickets: {e}")
 
     @app_commands.command(name="giveaccess", description="Manually grant temporary access role to a user")
     @app_commands.describe(user="The user to grant access to", hours="Access duration in hours (default: 24)")
@@ -230,6 +193,20 @@ class AdminCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="setcategory", description="Set the Discord Category ID where ticket channels are created")
+    @app_commands.describe(category_id="Category ID number")
+    async def slash_setcategory(self, interaction: discord.Interaction, category_id: str):
+        if not self.is_admin_or_staff(interaction.user):
+            await interaction.response.send_message("❌ You do not have permission to run this command.", ephemeral=True)
+            return
+        db.set_setting("TICKET_CATEGORY_ID", category_id.strip())
+        embed = discord.Embed(
+            title="✅ Ticket Category Updated",
+            description=f"Ticket Category ID set to `{category_id.strip()}`",
+            color=discord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
+
     @app_commands.command(name="settings", description="View current bot configuration")
     async def slash_settings(self, interaction: discord.Interaction):
         if not self.is_admin_or_staff(interaction.user):
@@ -241,16 +218,6 @@ class AdminCog(commands.Cog):
     # ==========================================
     # 📌 TRADITIONAL PREFIX COMMANDS (!)
     # ==========================================
-
-    @commands.command(name="setup_tickets", help="Deploy the ticket launcher embed with dropdown menu")
-    async def prefix_setup_tickets(self, ctx):
-        embed = self._create_setup_tickets_embed()
-        view = TicketDropdownView()
-        await ctx.send(embed=embed, view=view)
-        try:
-            await ctx.message.delete()
-        except Exception:
-            pass
 
     @commands.command(name="set_ltc", help="Set receiver LTC address & amount: !set_ltc <address> <amount>")
     async def prefix_set_ltc(self, ctx, address: str, amount: float):

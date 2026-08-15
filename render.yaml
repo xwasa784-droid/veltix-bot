@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: ltc-discord-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: LTC_ADDRESS
+        sync: false
+      - key: REQUIRED_LTC_AMOUNT
+        sync: false
+      - key: ACCESS_ROLE_ID
+        sync: false
+      - key: TICKET_CATEGORY_ID
+        sync: false

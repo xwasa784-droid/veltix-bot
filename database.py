@@ -18,22 +18,11 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # Settings table
+            # Dynamic settings table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS settings (
                     key TEXT PRIMARY KEY,
                     value TEXT
-                )
-            """)
-
-            # Tickets table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tickets (
-                    channel_id INTEGER PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    ticket_type TEXT NOT NULL,
-                    status TEXT DEFAULT 'open',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -74,25 +63,6 @@ class Database:
             cursor = conn.execute("SELECT value FROM settings WHERE key = ?", (key,))
             row = cursor.fetchone()
             return row["value"] if row else default
-
-    # Ticket Operations
-    def create_ticket(self, channel_id: int, user_id: int, ticket_type: str):
-        with self.get_connection() as conn:
-            conn.execute(
-                "INSERT INTO tickets (channel_id, user_id, ticket_type) VALUES (?, ?, ?)",
-                (channel_id, user_id, ticket_type)
-            )
-            conn.commit()
-
-    def close_ticket(self, channel_id: int):
-        with self.get_connection() as conn:
-            conn.execute("UPDATE tickets SET status = 'closed' WHERE channel_id = ?", (channel_id,))
-            conn.commit()
-
-    def get_ticket(self, channel_id: int):
-        with self.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM tickets WHERE channel_id = ?", (channel_id,))
-            return cursor.fetchone()
 
     # Payment & TXID Operations
     def is_txid_used(self, txid: str) -> bool:

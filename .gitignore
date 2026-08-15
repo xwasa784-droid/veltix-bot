@@ -2,7 +2,9 @@
 .env
 
 # SQLite Database & Logs
+*.db
 bot_data.db
+bot.db
 bot.log
 
 # Python cache & bytecode
