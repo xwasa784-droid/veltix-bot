@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
+from aiohttp import web
 import asyncio
 import logging
+import os
 import sys
 from config import Config
 from database import db
@@ -23,6 +25,20 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+async def handle_health_check(request):
+    return web.Response(text="Bot is running smoothly!", status=200)
+
+async def start_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", handle_health_check)
+    app.router.add_get("/health", handle_health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"Health check web server running on port {port}")
 
 def create_bot(use_privileged_intents: bool = True):
     intents = discord.Intents.default()
@@ -80,6 +96,12 @@ def create_bot(use_privileged_intents: bool = True):
     return bot
 
 async def start_bot_instance(use_privileged_intents: bool):
+    # Start embedded health check server for Render free web service
+    try:
+        await start_web_server()
+    except Exception as e:
+        logger.warning(f"Could not start web server: {e}")
+
     bot = create_bot(use_privileged_intents)
     
     initial_extensions = [
